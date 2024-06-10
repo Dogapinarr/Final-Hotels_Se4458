@@ -1,0 +1,81 @@
+version: '3.8'
+ 
+services:
+  mysql:
+    image: mysql:8.0
+    container_name: mysql
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: hotel_booking_system
+    ports:
+      - "3307:3307"
+    volumes:
+      - mysql-data:/var/lib/mysql
+    command: --default-authentication-plugin=mysql_native_password
+    healthcheck:
+      test: "exit 0"
+
+  redis:
+    image: redis
+    ports:
+      - "6379:6379"
+
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: "rabbitmq-diagnostics -q ping"
+
+  hotel-admin-service:
+    build: ./hotel-admin-service
+    ports:
+      - "3000:3000"
+    depends_on:
+      - mysql
+      - rabbitmq
+
+  hotel-search-service:
+    build: ./hotel-search-service
+    ports:
+      - "3001:3001"
+    depends_on:
+      - mysql
+      - redis
+
+  book-hotel-service:
+    build: ./book-hotel-service
+    ports:
+      - "3002:3002"
+    depends_on:
+      - mysql
+      - rabbitmq
+
+  notification-service:
+    build: ./notification-service
+    ports:
+      - "3003:3003"
+    depends_on:
+      - mysql
+      - rabbitmq
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "3004:3004"
+    depends_on:
+      - hotel-admin-service
+      - hotel-search-service
+      - book-hotel-service
+      - notification-service
+
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "3005:3005"
+    depends_on:
+      - mysql
+
+volumes:
+  mysql-data:
